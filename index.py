@@ -43,10 +43,27 @@ class SyncBeats:
         with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
             # Extract info from ytplaylist using yt_dlp
             info = ydl.extract_info(self.playlist_url, download=False)
-            
+            info = self.filter_titles_and_ids(info)
             # saving to file
             with open(fileName, 'w') as f:
                 json.dump(info, f, indent=4)
+    
+    def filter_titles_and_ids(self, playlist_info):
+    # Extract the title and URL of each video in the playlist
+        filtered_info = {
+            'PlaylistTitle': playlist_info.get('title'),
+            'playlistId': playlist_info.get('id'),
+            'videos': [
+                {
+                    'title': entry['title'], 
+                    'id': entry.get('id', None)
+                }
+                for entry in playlist_info.get('entries', [])
+            ]
+        }
+        filtered_info['videos'] = sorted(filtered_info['videos'], key=lambda x: x['title'])
+    
+        return filtered_info
     
     def hashPlaylist(self, file):
         # Create a SHA-256 hash object
@@ -65,4 +82,4 @@ url = 'https://youtube.com/playlist?list=PLAU44P-DKz39QYgl7VW4NGgYLLlIF-Unc&si=b
 downloadPath = 'Beats'             
                 
 Download = SyncBeats(url, downloadPath)
-Download.download()
+Download.save_playlist_info()
