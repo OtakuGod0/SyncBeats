@@ -1,3 +1,0 @@
-url = ''
-path = ''
-title = ''
