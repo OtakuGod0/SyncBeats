@@ -84,6 +84,9 @@ class SyncBeats:
     
     def syncPlaylist(self, sync_file_path, sync_file_path_yt):     
         if not os.path.exists(sync_file_path):
+            #saving playlist info 
+            self.save_playlist_info(sync_file_path)
+    
             with open(sync_file_path, 'r') as file:
                 fp = json.load(file)
                 title = fp['PlaylistTitle']
