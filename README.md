@@ -11,4 +11,4 @@ This project aims to sync music from youtube playlist to local device and also s
 - `rsync` or `WinSCP` for file sync
 
 
-```Note: ❗❗❗ Project Still in Project It might lack some features and may include bugs``` 
+```Note: ❗❗❗ Project Still in progress It might lack some features and may include bugs``` 
