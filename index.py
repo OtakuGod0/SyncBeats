@@ -65,6 +65,8 @@ class SyncBeats:
     
         return filtered_info
     
+
+    # hash for playlist change check
     def hashPlaylist(self, file_path):
         # Create a SHA-256 hash object
         sha256 = hashlib.sha256()
