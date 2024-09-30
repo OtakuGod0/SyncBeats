@@ -1,4 +1,3 @@
-
 import yt_dlp
 import json
 import os
@@ -12,6 +11,7 @@ class SyncBeats:
         self.ydl_opts = {
             'outtmpl': '%(title)s.%(ext)s',  # Save file with video title # hard coded needds to be fixed later
             # hard coded needs to be fixed later
+            # r string to ignore back slashes (\)
             'ffmpeg_location': r'C:\Users\admin\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-7.0.2-full_build\bin'
         }
         self.syncPlaylist(self.playlist_config_file_path, self.playlist_config_file_path_yt)
