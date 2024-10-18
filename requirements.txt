@@ -1,0 +1,4 @@
+yt_dlp
+hashlib
+ffmpeg
+tqdm
