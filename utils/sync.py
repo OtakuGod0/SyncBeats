@@ -144,14 +144,15 @@ def getLocalMusics(sync_dict):
     for _, _,  filenames in os.walk(sync_dict):
         # List files in the current directory
         for filename in filenames:
-            musicTitle = os.path.splitext(filename)[0]
-            musics.append(musicTitle)
+            musics.append(filename)
     
     return musics
 
 # normalizing 
 def normalize_title(titles): # to handle youtube api sending weird title str for special character bug
     def normalize(title): 
+        # spliting any extensions if available 
+        title = os.path.splitext(title)[0]
         # Convert to lowercase
         title = title.lower()
         # Replace special characters and extra spaces
@@ -161,10 +162,9 @@ def normalize_title(titles): # to handle youtube api sending weird title str for
         return title
     
     # normalizing only keys if dict
+    # empty dict to return 
+    normalized_titles = {}
     if isinstance(titles, dict): 
-        # empty dict to return 
-        normalized_titles = {}
-        
         for key, value in titles.items(): 
             normalized_titles.update({normalize(key): value})
         
@@ -173,14 +173,11 @@ def normalize_title(titles): # to handle youtube api sending weird title str for
     # if other then dict
     if not isinstance(titles, list): 
         titles = list(titles)
-        
-    normalized_titles = []
+
     for title in titles: 
-        normalized_titles.append(normalize(title))
+        normalized_titles.update({normalize(title): title})
     
     return normalized_titles
-        
-
 
 def YTSync(playlist_id, sync_dict):  
     sync_dict = os.path.abspath(os.path.expanduser(sync_dict))
@@ -188,17 +185,24 @@ def YTSync(playlist_id, sync_dict):
         os.makedirs(sync_dict)
         
     # Get the videos from the playlist
-    videos = normalize_title(getYTVideos(playlist_id))
+    YTvideos = normalize_title(getYTVideos(playlist_id))
     
     # Get local videos
     localMusics = normalize_title(getLocalMusics(sync_dict))
     
     # videos in remote only 
-    remoteOnly = set(videos.keys()) - set(localMusics)
+    remoteOnly = set(YTvideos.keys()) - set(localMusics.keys())
 
     for video in remoteOnly: 
-        url = videos[video]
+        url = YTvideos[video]
         download(url, sync_dict)
+        
+    # bidirectional syncing
+    localOnly = set(localMusics.keys()) - set(YTvideos.keys())
+    
+    for video in localOnly: 
+        print("removing files from local which is not in remote")
+        os.remove(os.path.join(sync_dict, localMusics[video]))
         
 def mobileSync(localDict, mobileDict, ftp=None):
     localDict = os.path.abspath(os.path.expanduser(localDict))  # Expand path symbols
@@ -227,6 +231,12 @@ def mobileSync(localDict, mobileDict, ftp=None):
 
     for content in localContentsOnly: 
         upload_to_mobile(os.path.join(localDict, content), mobileDict)
+    
+    # bidirectional syncing
+    remoteContentsOnly = set(remoteContents) - set(localContents)
+    for content in remoteContentsOnly: 
+        print(f"removing {content} in mobile for bidirectional sync")
+        ftp.delete(os.path.join(mobileDict, content))
 
     # List only directories
     directories = [name for name in localContents if os.path.isdir(os.path.join(localDict, name))]
@@ -244,26 +254,35 @@ def YTLocalMobileSync(playlist_id, local_dict, mobile_dict):
     if not os.path.exists(local_dict): 
         os.makedirs(local_dict)
     
-    # ensuring if local and mobile dict are in sync first
-    print("Ensuring mobile and local Dict are in sync")
-    mobileSync(local_dict, mobile_dict)  
-           
+    # ftp object to connect to mobile (to avoid multiple connect)
+    ftp = ftplib.FTP()
+    try: 
+        ftp.connect(mobile_ip, mobile_port)
+        ftp.login(username, password)  # Login with username and password
+        
+        # ensuring if local and mobile dict are in sync first
+        print("Ensuring mobile and local Dict are in sync")
+        mobileSync(local_dict, mobile_dict, ftp)  
+        
+    except ftplib.all_errors as e: 
+        print("Error connecting to FTP server (mobile): skipping mobile sync", e)        
+    
     # constantly syncing (refreshing in each 60s)
     try: 
         while True: 
             # Get the videos from the playlist
-            videos = normalize_title(getYTVideos(playlist_id))
+            YTvideos = normalize_title(getYTVideos(playlist_id))
             
             # Get local videos
             localMusics = normalize_title(getLocalMusics(local_dict))
             
             # videos in remote only 
-            remoteOnly = set(videos.keys()) - set(localMusics)
+            remoteOnly = set(YTvideos.keys()) - set(localMusics.keys())
 
             for video in remoteOnly: 
                 print(f"{video} added to playlist syncing into local and mobile")
                 
-                url = videos[video]
+                url = YTvideos[video]
                 
                 # downloading from yt and extracting title of video 
                 title, ext = download(url, local_dict)
@@ -277,6 +296,19 @@ def YTLocalMobileSync(playlist_id, local_dict, mobile_dict):
                 except ftplib.all_errors as e: 
                     print("Error connecting to ftp server")
                     print("Skipping upload to mobile")
+                    
+            # bidirectional syncing
+            localOnly = set(localMusics.keys()) - set(YTvideos.keys())
+            
+            for video in localOnly: 
+                print(f"removing {video} from local which is not in remote")
+                os.remove(os.path.join(local_dict, localMusics[video]))
+                try: 
+                    print(f"removing {video} from mobile which is not local")
+                    ftp.delete(os.path.join(mobile_dict, localMusics[video]))
+                except ftplib.all_errors: 
+                    print(f"Error deleting {video} from mobile skipping it")
+                
 
             # sleeping
             print("Playlist mobile and local are in sync")

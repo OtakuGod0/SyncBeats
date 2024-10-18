@@ -11,7 +11,7 @@ def getSyncDetails():
     # handling no config file
     except FileNotFoundError: 
         with open('config/sync_details.json', 'w') as fp: 
-            json.dump({}, fp)
+            json.dump({}, fp, indent=4)
             
     # getting playlist and sync directory path from user if not in config file
     if 'sync_playlist_id' not in sync_details.keys(): 
