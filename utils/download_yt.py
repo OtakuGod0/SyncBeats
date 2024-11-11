@@ -6,7 +6,25 @@ from config.config import default_format
 import os
 import yt_dlp
 
-def download(urls, download_path, format=default_format, playlist=False):
+def download(urls, download_path, format=default_format, playlist=False, progress = None):
+    def progress_hook(d, progress):
+        """
+            handle progress bar
+            args: 
+                d -> dict of yt_dlp
+                progress -> rich progress bar
+            returns: 
+                None
+                
+        """
+        
+        if d['status'] == 'downloading':
+            task_id = d['info_dict'].get('task_id')  # Unique task ID for each download
+            if task_id:
+                progress.update(task_id, completed=d['downloaded_bytes'], total=d.get('total_bytes', 0))
+        elif d['status'] == 'finished':
+            print("Download complete!")
+        
     if not isinstance(urls, list): 
         urls = [urls]  # Convert to list if not already a list
 
@@ -19,6 +37,10 @@ def download(urls, download_path, format=default_format, playlist=False):
             'quiet': True,
             'outtmpl': os.path.join(os.path.abspath(os.path.expanduser(download_path)), '%(title)s.%(ext)s')
         }
+
+        # handling progress hook 
+        if progress: 
+            ydl_opts['progress_hooks'] = [lambda d: progress_hook(d, progress)]
 
         # Playlist download option
         if playlist: 
